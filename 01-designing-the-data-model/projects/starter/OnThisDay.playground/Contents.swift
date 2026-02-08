@@ -72,10 +72,79 @@ func getDataForDay(month: Int, day: Int) async throws {
   }
 }
 
-Task {
-  do {
-    try await getDataForDay(month: 2, day: 29)
-  } catch {
-    print(error)
-  }
+//Task {
+//  do {
+//    try await getDataForDay(month: 2, day: 8)
+//  } catch {
+//    print(error)
+//  }
+//}
+
+
+struct EventLink: Decodable {
+    let title: String
+    let url: URL
 }
+
+struct Event: Decodable {
+    let text: String
+    let links: [EventLink]
+    
+    enum CodingKeys: String, CodingKey {
+        case text
+        case links
+    }
+    
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        
+        text = try values.decode(String.self, forKey: .text)
+        
+        let allLinks = try values.decode(
+            [String: [String: String]].self,
+            forKey: .links
+        )
+        
+        var processedLinks: [EventLink] = []
+        for (_, link) in allLinks {
+            if let title = link["2"],
+               let address = link["1"],
+               let url = URL(string: address) {
+                processedLinks.append(EventLink(title: title, url: url))
+            }
+        }
+        links = processedLinks
+    }
+}
+
+enum EventType: String {
+    case events = "Events"
+    case births = "Births"
+    case deaths = "Deaths"
+}
+
+struct Day: Decodable {
+    let date: String
+    let data: [String: [Event]]
+    
+    var events: [Event] { data[EventType.events.rawValue] ?? [] }
+    var births: [Event] { data[EventType.births.rawValue] ?? [] }
+    var deaths: [Event] { data[EventType.deaths.rawValue] ?? [] }
+    
+    var displayDate: String {
+        date.replacingOccurrences(of: "_", with: " ")
+    }
+}
+
+if let data = readSampleData() {
+    do {
+        let day = try JSONDecoder().decode(Day.self, from: data)
+        print(day.displayDate)
+        print(day.births.count)
+        print(day.births[0].links)
+    } catch {
+        print(error)
+    }
+}
+
+
