@@ -1,4 +1,5 @@
 import Cocoa
+//import SwiftUI
 
 extension String {
   /// String extension to decode HTML entities.
@@ -39,15 +40,6 @@ func getDataForDay(month: Int, day: Int) async throws {
     saveSampleData(json: jsonString)
   }
 }
-
-//Task {
-//  do {
-//    try await getDataForDay(month: 2, day: 8)
-//  } catch {
-//    print(error)
-//  }
-//}
-
 
 struct EventLink: Decodable, Identifiable {
     let id: UUID // назначает "вручную" при создании инстанса
@@ -121,13 +113,44 @@ struct Day: Decodable {
     }
 }
 
+// NB: ObservableObject и @Published вызывают ошибки при запуске playground
+class AppState { // : ObservableObject
+    var days: [String: Day] = [:] // @Published
+    
+    func getDataFor(month: Int, day: Int) -> Day? {
+        let monthName = Calendar.current.monthSymbols[month - 1]
+        let dateString = "\(monthName) \(day)"
+        return days[dateString]
+    }
+}
+
+// Загружает данные из API и сохраняет в файл
+//Task {
+//  do {
+//    try await getDataForDay(month: 2, day: 8)
+//  } catch {
+//    print(error)
+//  }
+//}
+
+let appState = AppState()
+let monthNum = 2
+let dayNum = 8
+
+func testData() {
+    if let day = appState.getDataFor(month: monthNum, day: dayNum) {
+        print(day.displayDate)
+        print("\(day.births.count) births")
+    } else {
+        print("No data available for this month and day.")
+    }
+}
+
 if let data = readSampleData() {
     do {
         let day = try JSONDecoder().decode(Day.self, from: data)
-        print("Date: " + day.displayDate)
-        print("Births qty: \(day.births.count)")
-        print(day.births[0].text)
-        print(day.births[0].year)
+        appState.days[day.displayDate] = day
+        testData()
     } catch {
         print(error)
     }
