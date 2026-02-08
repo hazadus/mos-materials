@@ -1,7 +1,7 @@
 import Cocoa
 
 extension String {
-  // String extension to decode HTML entities
+  /// String extension to decode HTML entities.
   var decoded: String {
     let attr = try? NSAttributedString(
       data: Data(utf8),
@@ -57,7 +57,9 @@ struct EventLink: Decodable, Identifiable {
 
 struct Event: Decodable, Identifiable {
     let id: UUID = UUID() // инициализируем тут, и не указываем в CodingKeys
-
+    let year: String
+    
+    // Поля из JSON
     let text: String
     let links: [EventLink]
     
@@ -69,7 +71,17 @@ struct Event: Decodable, Identifiable {
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         
-        text = try values.decode(String.self, forKey: .text)
+        // Получаем год и описание из поля text
+        let rawText = try values.decode(String.self, forKey: .text)
+        let textParts = rawText.components(separatedBy: " &#8211; ")
+        
+        if textParts.count == 2 {
+            year = textParts[0]
+            text = textParts[1].decoded
+        } else {
+            year = "?"
+            text = rawText.decoded
+        }
         
         let allLinks = try values.decode(
             [String: [String: String]].self,
@@ -112,9 +124,10 @@ struct Day: Decodable {
 if let data = readSampleData() {
     do {
         let day = try JSONDecoder().decode(Day.self, from: data)
-        print(day.displayDate)
-        print(day.births.count)
-        print(day.births[0].links)
+        print("Date: " + day.displayDate)
+        print("Births qty: \(day.births.count)")
+        print(day.births[0].text)
+        print(day.births[0].year)
     } catch {
         print(error)
     }
